@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config');
 
-// Получить все книги
+
 router.get('/books', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM books');
@@ -13,7 +13,6 @@ router.get('/books', async (req, res) => {
     }
 });
 
-// Добавить новую книгу
 router.post('/books', async (req, res) => {
     const { title, author, published_date } = req.body;
     try {
