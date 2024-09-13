@@ -16,7 +16,7 @@ app.get('/' , (req , res) => {
 
 app.post('/books' , (req , res) => {
 
-    if(!req.body.title || req.body.author) {
+    if(!req.body.title || !req.body.author) {
         return res.status(404).json({error : 'Title and author are required'});
     }
 
@@ -24,23 +24,31 @@ app.post('/books' , (req , res) => {
         id: books.length + 1,
         title: req.body.title , 
         author: req.body.author , 
-        available: req.body.available !==undefined ? available:true,
+        available: req.body.available !==undefined ? req.body.available:true,
     };
     books.push(newbook);
     res.status(201).json(newbook);
 });
 
 app.get('/books' , (req , res) => {
-    const {available} = req.query;
+    const {title , author , available} = req.query;
+    let filtredbooks = books;
 
-    if(available === undefined){
-        return res.status(200).json(books);
+    if( title !== undefined ){
+        const filtredbooks = filtredbooks.filter(b => b.title.toLowerCase().includes(title.toLowerCase()));
     }
 
-    const isthat = available === 'true';
-    const filtred = books.filter(b => b.available === isthat);
+    if( author !== undefined ){
+        const filtredbooks = filtredbooks.filter(b => b.author.toLowerCase().includes(author.toLowerCase()));
+    }
 
-    res.status(200).send(filtred);
+    if( available !== undefined){
+        const isthat = available === 'true';
+        filtredbooks = filtredbooks.filter(b => b.available === isthat);
+    }
+
+
+    res.status(200).send(filtredbooks);
     
 });
 
@@ -68,3 +76,4 @@ app.delete('/books/:id' , (req,res) => {
     const deletebook = books.splice(book , 1);
     res.status(200).json(deletebook);
 })
+
