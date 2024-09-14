@@ -1,8 +1,44 @@
 const express = require('express');
 const app = express();
 const PORT = 3000;
+const jwt = require('jsonwebtoken');
 
 app.use(express.json());
+
+const secretkey = 'My secret key';
+
+const users = [
+    {id: 1, username: 'user1' , password: 'password1'},
+    {id:2 , username:'user2' , password:'password2'},
+];
+
+app.post('/login' , (req , res) => {
+    const {username , password} = req.body;
+
+    const user = users.find(u => u.username === username && u.password === password);
+    if(!user){
+        return res.status(401).json({error:'Invalid username or password'});
+    }
+
+    const token = jwt.sign({userID: user.id} , secretkey , {expressIn: '1h'});
+    res.status(200).send('Correct');
+})
+
+function authenticateToken(req, res, next) {
+    const token = req.header('Authorization');
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied, no token provided' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(400).json({ error: 'Invalid token' });
+    }
+}
 
 app.listen(PORT , () => {
     console.log(`Server listening on port http://localhost:${PORT}`);
