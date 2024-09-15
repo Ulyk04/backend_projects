@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 
 app.use(express.json());
 
-const secretkey = 'My secret key';
+const secretkey = 'm45secret';
 
 const users = [
     {id: 1, username: 'user1' , password: 'password1'},
@@ -20,9 +20,9 @@ app.post('/login' , (req , res) => {
         return res.status(401).json({error:'Invalid username or password'});
     }
 
-    const token = jwt.sign({userID: user.id} , secretkey , {expressIn: '1h'});
-    res.status(200).send('Correct');
-})
+    const token = jwt.sign({userID: user.id} , secretkey , {expiresIn: '1h'});
+    res.status(200).json({token});
+});
 
 function authenticateToken(req, res, next) {
     const token = req.header('Authorization');
@@ -32,7 +32,7 @@ function authenticateToken(req, res, next) {
     }
 
     try {
-        const decoded = jwt.verify(token, SECRET_KEY);
+        const decoded = jwt.verify(token, secretkey);
         req.user = decoded;
         next();
     } catch (err) {
@@ -50,7 +50,7 @@ app.get('/' , (req , res) => {
     res.send('Welcome to library API');
 })
 
-app.post('/books' , (req , res) => {
+app.post('/books' , authenticateToken,(req , res) => {
 
     if(!req.body.title || !req.body.author) {
         return res.status(404).json({error : 'Title and author are required'});
@@ -66,7 +66,7 @@ app.post('/books' , (req , res) => {
     res.status(201).json(newbook);
 });
 
-app.get('/books' , (req , res) => {
+app.get('/books' , authenticateToken , (req , res) => {
     const {title , author , available} = req.query;
     let filtredbooks = books;
 
@@ -88,13 +88,13 @@ app.get('/books' , (req , res) => {
     
 });
 
-app.get('/books/:id' , (req , res) => {
+app.get('/books/:id' ,authenticateToken, (req , res) => {
     const book = books.find(b => b.id === parseInt(req.params.id));
     if(!book) return res.status(404).send('Book not found');
     res.status(200).json(book);
 })
 
-app.put('/books/:id' , (req , res) => {
+app.put('/books/:id' ,authenticateToken, (req , res) => {
     const book = books.find(b => b.id === parseInt(req.params.id));
     if(!book) return res.status(404).send('Book not found');
 
@@ -105,7 +105,7 @@ app.put('/books/:id' , (req , res) => {
     res.status(200).json(book);
 });
 
-app.delete('/books/:id' , (req,res) => {
+app.delete('/books/:id' ,authenticateToken, (req,res) => {
     const book = books.find(b => b.id === parseInt(req.params.id));
     if(!book) return res.status(404).send('Book not found');
 
