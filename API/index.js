@@ -2,26 +2,37 @@ const express = require('express');
 const app = express();
 const PORT = 3000;
 const jwt = require('jsonwebtoken');
+const {Pool} = require('pg');
 
 app.use(express.json());
 
-const secretkey = 'm45secret';
+const pool = new Pool({
+    user: 'postgres', 
+    host: 'localhost', 
+    database: 'You DB', 
+    password: 'Your password', 
+    port: 5432, 
+});
 
-const users = [
-    {id: 1, username: 'user1' , password: 'password1'},
-    {id:2 , username:'user2' , password:'password2'},
-];
+const secretkey = 'Your secret key';
 
-app.post('/login' , (req , res) => {
-    const {username , password} = req.body;
+const query = (text , params) => pool.query(text , params);
 
-    const user = users.find(u => u.username === username && u.password === password);
-    if(!user){
-        return res.status(401).json({error:'Invalid username or password'});
-    }
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
 
-    const token = jwt.sign({userID: user.id} , secretkey , {expiresIn: '1h'});
-    res.status(200).json({token});
+    
+    query('SELECT * FROM users WHERE username = $1 AND password = $2', [username, password])
+        .then(result => {
+            const user = result.rows[0];
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid username or password' });
+            }
+
+            const token = jwt.sign({ userID: user.id }, secretkey, { expiresIn: '1h' });
+            res.status(200).json({ token });
+        })
+        .catch(err => res.status(500).json({ error: err.message }));
 });
 
 function authenticateToken(req, res, next) {
@@ -50,66 +61,85 @@ app.get('/' , (req , res) => {
     res.send('Welcome to library API');
 })
 
-app.post('/books' , authenticateToken,(req , res) => {
 
-    if(!req.body.title || !req.body.author) {
-        return res.status(404).json({error : 'Title and author are required'});
+app.post('/books', authenticateToken, (req, res) => {
+    const { title, author, available } = req.body;
+
+    if (!title || !author) {
+        return res.status(400).json({ error: 'Title and author are required' });
     }
 
-    const newbook = {
-        id: books.length + 1,
-        title: req.body.title , 
-        author: req.body.author , 
-        available: req.body.available !==undefined ? req.body.available:true,
-    };
-    books.push(newbook);
-    res.status(201).json(newbook);
+    query('INSERT INTO books (title, author, available) VALUES ($1, $2, $3) RETURNING *', 
+        [title, author, available !== undefined ? available : true])
+        .then(result => res.status(201).json(result.rows[0]))
+        .catch(err => res.status(500).json({ error: err.message }));
 });
 
-app.get('/books' , authenticateToken , (req , res) => {
-    const {title , author , available} = req.query;
-    let filtredbooks = books;
 
-    if( title !== undefined ){
-        const filtredbooks = filtredbooks.filter(b => b.title.toLowerCase().includes(title.toLowerCase()));
+app.get('/books', authenticateToken, (req, res) => {
+    const { title, author, available } = req.query;
+    let queryString = 'SELECT * FROM books WHERE TRUE';
+    const params = [];
+
+    if (title !== undefined) {
+        queryString += ' AND LOWER(title) LIKE LOWER($1)';
+        params.push(`%${title}%`);
     }
 
-    if( author !== undefined ){
-        const filtredbooks = filtredbooks.filter(b => b.author.toLowerCase().includes(author.toLowerCase()));
+    if (author !== undefined) {
+        queryString += ' AND LOWER(author) LIKE LOWER($2)';
+        params.push(`%${author}%`);
     }
 
-    if( available !== undefined){
-        const isthat = available === 'true';
-        filtredbooks = filtredbooks.filter(b => b.available === isthat);
+    if (available !== undefined) {
+        queryString += ' AND available = $3';
+        params.push(available === 'true');
     }
 
-
-    res.status(200).send(filtredbooks);
-    
+    query(queryString, params)
+        .then(result => res.status(200).json(result.rows))
+        .catch(err => res.status(500).json({ error: err.message }));
 });
 
-app.get('/books/:id' ,authenticateToken, (req , res) => {
-    const book = books.find(b => b.id === parseInt(req.params.id));
-    if(!book) return res.status(404).send('Book not found');
-    res.status(200).json(book);
-})
+app.get('/books/:id', authenticateToken, (req, res) => {
+    const id = parseInt(req.params.id);
 
-app.put('/books/:id' ,authenticateToken, (req , res) => {
-    const book = books.find(b => b.id === parseInt(req.params.id));
-    if(!book) return res.status(404).send('Book not found');
-
-    book.title = req.body.title;
-    book.author = req.body.author;
-    book.available = req.body.available;
-
-    res.status(200).json(book);
+    query('SELECT * FROM books WHERE id = $1', [id])
+        .then(result => {
+            if (result.rows.length === 0) {
+                return res.status(404).send('Book not found');
+            }
+            res.status(200).json(result.rows[0]);
+        })
+        .catch(err => res.status(500).json({ error: err.message }));
 });
 
-app.delete('/books/:id' ,authenticateToken, (req,res) => {
-    const book = books.find(b => b.id === parseInt(req.params.id));
-    if(!book) return res.status(404).send('Book not found');
+app.put('/books/:id', authenticateToken, (req, res) => {
+    const id = parseInt(req.params.id);
+    const { title, author, available } = req.body;
 
-    const deletebook = books.splice(book , 1);
-    res.status(200).json(deletebook);
-})
+    query('UPDATE books SET title = $1, author = $2, available = $3 WHERE id = $4 RETURNING *', 
+        [title, author, available, id])
+        .then(result => {
+            if (result.rows.length === 0) {
+                return res.status(404).send('Book not found');
+            }
+            res.status(200).json(result.rows[0]);
+        })
+        .catch(err => res.status(500).json({ error: err.message }));
+});
+
+app.delete('/books/:id', authenticateToken, (req, res) => {
+    const id = parseInt(req.params.id);
+
+    query('DELETE FROM books WHERE id = $1 RETURNING *', [id])
+        .then(result => {
+            if (result.rows.length === 0) {
+                return res.status(404).send('Book not found');
+            }
+            res.status(200).json(result.rows[0]);
+        })
+        .catch(err => res.status(500).json({ error: err.message }));
+});
+
 
