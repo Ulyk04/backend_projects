@@ -1,0 +1,14 @@
+<h1>Articles</h1>
+<a href="/articles/new">Create New Article</a>
+<ul>
+  <% articles.forEach(article => { %>
+    <li>
+      <h2><%= article.title %></h2>
+      <p><%= article.body %></p>
+      <a href="/articles/<%= article.id %>/edit">Edit</a>
+      <form method="POST" action="/articles/<%= article.id %>?_method=DELETE">
+        <button type="submit">Delete</button>
+      </form>
+    </li>
+  <% }) %>
+</ul>
