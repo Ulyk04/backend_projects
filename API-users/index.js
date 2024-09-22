@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const bp = require('body-parser');
 const app = express();
 
-const secret = 'js45key'
+const secret = 'your secret key'
 
 app.use(bp.json()); 
 app.use(bp.urlencoded({ extended: true })); 
@@ -14,8 +14,8 @@ app.use(bp.urlencoded({ extended: true }));
 const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
-    database: 'projects',
-    password: '2020lmn',
+    database: 'your db',
+    password: 'your password',
     port: 5432,
 });
 
