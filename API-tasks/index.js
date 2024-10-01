@@ -23,12 +23,12 @@ app.use(bp.urlencoded({extended:true}));
 const pool = new Pool({
     user: 'postgres' ,
     host : 'localhost' , 
-    database: 'projects' , 
-    password : '2020lmn' , 
+    database: 'DB' , 
+    password : 'YOUR PASSWORD' , 
     port: 5432
 });
 
-const secret = 'my45secret';
+const secret = 'SECRET KEY';
 
 app.post('/signin' , async(req ,res) => {
     const {username , password} = req.body;
