@@ -1,6 +1,7 @@
 const express = require('express');
 const bp = require('body-parser');
 const {Pool} = require('pg');
+const joi = require('joi');
 
 const app = express();
 const PORT = 3000;
@@ -12,17 +13,35 @@ app.use(bp.urlencoded({extended: true}));
 const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
-    database: 'projects',
-    password: '2020lmn',
+    database: 'DB',
+    password: 'YOUR PASSWORD',
     port: 5432
 });
 const query = (text , params) => pool.query(text , params);
+
+const productjoi = joi.object({
+    name: joi.string().min(3).required(),
+    price: joi.number().positive.required(),
+    stock: joi.number().integer.required()
+})
+
+const orderjoi = joi.object({
+    date: joi.date().required() ,
+    status: joi.string().valid('in proccess' , 'sent' , 'completed').required(),
+    total: joi.number().integer().required()
+})
 
 app.listen(PORT , () => {
     console.log(`Your server is running on http://localhost:${PORT}`);
 });
 
 app.post('/products' , async (req , res) => {
+    const {error} = productjoi.validate(req.body);
+
+    if(error){
+        res.status(400).json({error: error.details[0].message });
+    }
+
     const {name , price , stock} = req.body;
 
     try{
@@ -39,6 +58,12 @@ app.post('/products' , async (req , res) => {
 });
 
 app.post('/orders' , async(req , res) => {
+    const {error} = orderjoi.validate(req.body);
+
+    if(error){
+        res.status(400).json({error: error.details[0].message});
+    }
+
     const {date , status , total} = req.body;
 
     try{
@@ -166,4 +191,6 @@ app.put('/putorders/:id' , async(req , res) =>{
         console.log(err)
         res.status(500).json({err: 'Something is wrong on server'});
     }
-})
+});
+
+
