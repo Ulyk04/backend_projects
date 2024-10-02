@@ -17,3 +17,6 @@ CREATE TABLE orders(
     status VARCHAR(100) NOT NULL,
     total BIGINT NOT NULL
 )
+
+INSERT INTO users_2(username , password)
+VALUES('Ulykpan' , '123456')
