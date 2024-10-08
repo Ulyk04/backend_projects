@@ -13,3 +13,11 @@ CREATE TABLE stats(
 
     FOREIGN KEY (author_id) REFERENCES users_3(id)
 )
+
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    post_id INT REFERENCES stats(id),
+    author_id INT REFERENCES users_3(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
